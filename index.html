@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Learn chip design one NAND gate at a time, then tape out on X Layer. A TapeOut Idea Scouts concept.">
+<title>Gate School</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* Layout: a chip package on a fab bench. Datasheet lesson card left, the die (bond pads, fiducials, live traces) centre, test vectors underneath. */
+:root{
+  --bg:#0b1020;
+  --bg-2:#0f1529;
+  --panel:#141b30;
+  --panel-2:#1b2440;
+  --line:#2a3657;
+  --line-2:#3a4870;
+  --ink:#ecEFF8;
+  --dim:#8f99b5;
+  --high:#f7b940;              /* signal HIGH */
+  --high-2:#ffd27a;
+  --high-soft:rgba(247,185,64,.15);
+  --copper:#c7864a;            /* bond pads and traces */
+  --low:#48557a;
+  --ok:#5fd394;
+  --ok-soft:rgba(95,211,148,.14);
+  --bad:#f27474;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--ink)}
+body{
+  font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:24px 48px;
+  background:
+    radial-gradient(900px 420px at 85% -10%, rgba(247,185,64,.09), transparent 70%),
+    radial-gradient(700px 500px at -10% 30%, rgba(90,120,220,.10), transparent 70%),
+    linear-gradient(var(--bg),var(--bg));
+  min-height:100%;
+}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+  background-image:linear-gradient(rgba(120,140,200,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,200,.045) 1px,transparent 1px);
+  background-size:40px 40px;mask-image:linear-gradient(#000,transparent 70%);-webkit-mask-image:linear-gradient(#000,transparent 70%)}
+.wrap{max-width:1260px;margin:0 auto;display:grid;gap:22px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:2px solid var(--high);outline-offset:2px}
+.mono{font-family:var(--f-mono)}
+
+/* ---------- header ---------- */
+header.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px 28px;align-items:end}
+@media (max-width:820px){header.top{grid-template-columns:1fr}}
+.kicker{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+.kicker .tag{border:1px solid var(--line-2);border-radius:999px;padding:3px 10px}
+.kicker .tag.hot{border-color:var(--high);color:var(--high)}
+.brand h1{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,6.4vw,74px);letter-spacing:-.035em;line-height:.92;margin:0;display:flex;align-items:center;gap:16px}
+.brand h1 em{font-style:normal;background:linear-gradient(100deg,var(--high-2),var(--high) 45%,var(--copper));-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo{width:.78em;height:.78em;flex:none;position:relative;border-radius:10px;border:2px solid var(--line-2);background:var(--panel)}
+.logo::before{content:"";position:absolute;inset:24%;border-radius:4px;background:var(--high);box-shadow:0 0 18px var(--high);animation:breathe 2.6s ease-in-out infinite}
+.logo::after{content:"";position:absolute;inset:-9px;background:
+  repeating-linear-gradient(90deg,var(--copper) 0 3px,transparent 3px 9px) top/60% 5px no-repeat,
+  repeating-linear-gradient(90deg,var(--copper) 0 3px,transparent 3px 9px) bottom/60% 5px no-repeat,
+  repeating-linear-gradient(0deg,var(--copper) 0 3px,transparent 3px 9px) left/5px 60% no-repeat,
+  repeating-linear-gradient(0deg,var(--copper) 0 3px,transparent 3px 9px) right/5px 60% no-repeat;opacity:.8}
+@keyframes breathe{50%{opacity:.65;box-shadow:0 0 6px var(--high)}}
+.brand p{margin:14px 0 0;color:var(--dim);max-width:60ch;font-size:16px;text-wrap:balance}
+.stats{display:grid;grid-template-columns:repeat(3,auto);gap:0;border:1px solid var(--line);border-radius:14px;background:rgba(20,27,48,.75);backdrop-filter:blur(6px)}
+.stat{padding:12px 18px;display:grid;gap:2px}
+.stat+.stat{border-left:1px solid var(--line)}
+.stat b{font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.stat.gold b{color:var(--high)}
+
+/* ---------- lesson rail as a trace ---------- */
+.rail{display:flex;gap:0;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}
+.lv{flex:none;position:relative;display:grid;gap:3px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px 10px 14px;min-width:142px;margin-left:26px;transition:border-color .2s, transform .2s}
+.lv:first-child{margin-left:0}
+.lv:not(:first-child)::before{content:"";position:absolute;right:100%;top:50%;width:27px;height:2px;background:var(--line)}
+.lv.done:not(:first-child)::before,.lv.done+.lv::before{background:var(--copper)}
+.lv:hover:not(:disabled){transform:translateY(-2px);border-color:var(--line-2)}
+.lv .n{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;gap:8px}
+.lv .t{font-weight:600;font-size:14.5px}
+.leds{display:flex;gap:5px;margin-top:3px}
+.led{width:9px;height:9px;border-radius:50%;background:#252f4b;border:1px solid #33405f}
+.led.on{background:var(--high);border-color:var(--high-2);box-shadow:0 0 8px var(--high)}
+.lv[aria-current="true"]{border-color:var(--high);background:linear-gradient(180deg,rgba(247,185,64,.10),var(--panel) 70%);box-shadow:0 0 0 3px var(--high-soft)}
+.lv:disabled{opacity:.42;cursor:not-allowed}
+.lv:disabled .n::after{content:"locked"}
+.lv.final{border-style:dashed}
+.lv.final .n{color:var(--high)}
+
+/* ---------- main ---------- */
+main{display:grid;grid-template-columns:310px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:940px){main{grid-template-columns:1fr}}
+
+.lesson{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:grid}
+.sheet-top{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:var(--panel-2);border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.sheet-top b{color:var(--high);font-weight:600}
+.sheet{padding:18px;display:grid;gap:16px}
+.lesson h2{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.02em;line-height:1.02;margin:0;text-wrap:balance}
+.lesson p{margin:0}
+.goal{color:#c9d0e2}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.specs div{padding:8px 10px;display:grid;gap:1px}
+.specs div+div{border-left:1px solid var(--line)}
+.specs span{font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.specs b{font-family:var(--f-mono);font-size:14px;font-weight:600}
+.hint{border:1px dashed var(--line-2);border-radius:10px;padding:10px 12px;color:var(--dim);font-size:14px}
+.hint summary{cursor:pointer;color:var(--ink);font-weight:600;list-style:none;display:flex;justify-content:space-between}
+.hint summary::-webkit-details-marker{display:none}
+.hint summary::after{content:"+";color:var(--high);font-family:var(--f-mono)}
+.hint[open] summary::after{content:"−"}
+.how{font-size:13.5px;color:var(--dim);display:grid;gap:6px;padding:0;margin:0;list-style:none}
+.how li{display:grid;grid-template-columns:18px 1fr;gap:6px}
+.how li::before{content:"";width:8px;height:8px;margin-top:6px;border-radius:2px;background:var(--copper)}
+.stars-key{display:grid;gap:5px;font-size:13px;color:var(--dim);border-top:1px solid var(--line);padding-top:14px}
+.stars-key div{display:flex;gap:8px;align-items:center}
+.stars-key .leds{margin:0;min-width:37px}
+
+.bench{display:grid;gap:14px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{background:var(--panel-2);border:1px solid var(--line-2);border-radius:10px;padding:9px 15px;font-weight:600;font-size:14px;transition:border-color .15s, background .15s, transform .1s}
+.btn:hover:not(:disabled){border-color:var(--dim)}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:linear-gradient(180deg,var(--high-2),var(--high));border-color:var(--high);color:#221703;box-shadow:0 6px 18px -8px var(--high)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--dim)}
+.btn.ghost:hover:not(:disabled){color:var(--ink);border-color:var(--line)}
+.meter{margin-left:auto;display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.meter b{color:var(--ink)}
+.bar{width:90px;height:6px;border-radius:99px;background:#222c48;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
+.bar i.over{background:var(--high)}
+
+/* ---------- the die ---------- */
+.package{position:relative;padding:14px;border-radius:20px;background:linear-gradient(160deg,#1a2240,#10162b);border:1px solid var(--line-2);box-shadow:0 30px 60px -30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04)}
+.package::before,.package::after{content:"";position:absolute;left:44px;right:44px;height:6px;
+  background:repeating-linear-gradient(90deg,var(--copper) 0 10px,transparent 10px 24px);opacity:.55;border-radius:2px}
+.package::before{top:4px}.package::after{bottom:4px}
+.die{position:relative;border-radius:12px;overflow-x:auto;background:#0c1224;border:1px solid #2c3a62;transition:box-shadow .3s,border-color .3s}
+.die.win{border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft),0 0 40px -6px var(--ok)}
+#board{display:block;width:100%;min-width:640px;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+.silk{position:absolute;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#56658e;pointer-events:none}
+.silk.tl{left:14px;top:10px}.silk.tr{right:14px;top:10px}
+.status{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;font-family:var(--f-mono);font-size:12px;color:var(--high);background:rgba(11,16,32,.85);border:1px solid var(--high);border-radius:99px;padding:4px 12px;pointer-events:none;white-space:nowrap}
+.status:empty{display:none}
+.stamp{position:absolute;right:22px;top:38px;font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:.06em;color:var(--ok);border:3px solid var(--ok);border-radius:10px;padding:2px 14px;transform:rotate(-8deg);pointer-events:none;opacity:0}
+.stamp.show{animation:stamp .5s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes stamp{from{opacity:0;transform:rotate(-8deg) scale(1.8)}to{opacity:.95;transform:rotate(-8deg) scale(1)}}
+.empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.empty div{text-align:center;color:#5b6a93;font-size:14px;max-width:30ch}
+.empty b{display:block;font-family:var(--f-display);font-size:20px;color:#8390b6;margin-bottom:4px}
+
+/* svg bits */
+.flow{stroke-dasharray:3 13;animation:flow .9s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+
+/* ---------- vectors ---------- */
+.vectors{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:grid;gap:12px}
+.vhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.vhead h3{margin:0;font-family:var(--f-display);font-size:19px;font-weight:700}
+.vprog{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums;flex:1 1 200px}
+.vprog .bar{flex:1;max-width:220px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-family:var(--f-mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 12px;text-align:center;white-space:nowrap}
+thead th{font-weight:500;color:var(--dim);font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--panel-2)}
+tbody tr+tr td{border-top:1px solid #222c48}
+th.sep,td.sep{border-left:1px solid var(--line)}
+td .bit{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;font-weight:600}
+td .b1{background:var(--high-soft);color:var(--high)}
+td .b0{color:var(--dim)}
+td .bx{color:var(--low)}
+td.res{width:52px;font-weight:600}
+tr.pass td.res{color:var(--ok)}
+tr.fail td.res{color:var(--bad)}
+tr.fail td.got .bit{outline:1px solid rgba(242,116,116,.5)}
+tr.flash{animation:flash .55s ease}
+@keyframes flash{from{background:var(--high-soft)}to{background:transparent}}
+.toast{min-height:22px;font-size:14.5px}
+.toast.ok{color:var(--ok)} .toast.bad{color:var(--bad)}
+.grad{display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:linear-gradient(100deg,rgba(247,185,64,.18),rgba(199,134,74,.08));border:1px solid var(--high);border-radius:14px;padding:14px 16px}
+.grad p{margin:0;flex:1 1 240px}
+.grad strong{font-family:var(--f-display);font-size:17px;display:block}
+
+/* ---------- modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(5,8,16,.78);backdrop-filter:blur(4px);display:grid;place-items:center;padding:20px;z-index:20}
+.modal{background:linear-gradient(170deg,#1a2240,var(--panel) 60%);border:1px solid var(--line-2);border-radius:20px;max-width:500px;width:100%;padding:24px;display:grid;gap:16px;box-shadow:0 40px 80px -30px #000}
+.mhead{display:flex;gap:16px;align-items:center}
+.wafer{width:64px;height:64px;flex:none;border-radius:50%;position:relative;background:
+  conic-gradient(from 200deg,#2a3a6a,#5b4c86,#2f6a7a,#7a6a3a,#2a3a6a);box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+.wafer::before{content:"";position:absolute;inset:6px;border-radius:50%;background:
+  linear-gradient(rgba(11,16,32,.55) 1px,transparent 1px) 0 0/8px 8px,linear-gradient(90deg,rgba(11,16,32,.55) 1px,transparent 1px) 0 0/8px 8px}
+.wafer.spin{animation:spin 3s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal h3{font-family:var(--f-display);font-size:25px;margin:0;line-height:1.05}
+.sum{font-family:var(--f-mono);font-size:12.5px;color:var(--dim)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.steps li{display:grid;grid-template-columns:24px 1fr;gap:12px;align-items:start;color:var(--dim);padding:11px 14px}
+.steps li+li{border-top:1px solid var(--line)}
+.steps li .dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--low);margin-top:4px}
+.steps li.run{color:var(--ink);background:var(--high-soft)} .steps li.run .dot{border-color:var(--high);animation:pulse 1s infinite}
+.steps li.done{color:var(--ink)} .steps li.done .dot{border-color:var(--ok);background:var(--ok)}
+.steps small{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--dim)}
+@keyframes pulse{50%{box-shadow:0 0 0 6px var(--high-soft)}}
+.live{font-family:var(--f-display);font-weight:800;font-size:24px;letter-spacing:-.01em;color:var(--high)}
+.fine{font-size:12.5px;color:var(--dim);margin:0}
+/* ---------- NAND rule + guided tour ---------- */
+.rule{border:1px solid var(--line);border-radius:10px;overflow:hidden;width:auto;font-size:12.5px}
+.rule th{background:var(--panel-2)}
+.rule td,.rule th{padding:4px 10px}
+.rule tr.zero td{background:var(--high-soft)}
+.rulebox{display:grid;gap:8px}
+.rulebox .lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.rulebox p{font-size:13.5px;color:var(--dim)}
+.coach{border:1px solid var(--high);border-radius:16px;padding:16px 18px;display:grid;gap:10px;
+  background:linear-gradient(120deg,rgba(247,185,64,.16),rgba(20,27,48,.95) 55%);box-shadow:0 18px 40px -24px var(--high)}
+.coach-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--high)}
+.coach-head button{background:none;border:0;color:var(--dim);font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:2px 0}
+.coach-head button:hover{color:var(--ink)}
+.cdots{display:flex;gap:5px}
+.cdots i{width:18px;height:4px;border-radius:2px;background:#2a3657}
+.cdots i.on{background:var(--high)}
+.coach h4{margin:0;font-family:var(--f-display);font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.coach p{margin:0;max-width:68ch;color:#d3d9e8}
+.coach p b{color:var(--high)}
+.coach-row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.coach-wait{font-family:var(--f-mono);font-size:12px;color:var(--high);display:flex;align-items:center;gap:8px}
+.coach-wait::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--high);animation:breathe 1.2s infinite}
+.coach-target{box-shadow:0 0 0 3px var(--high),0 0 22px var(--high);animation:ring 1.3s ease-in-out infinite}
+@keyframes ring{50%{box-shadow:0 0 0 6px rgba(247,185,64,.35),0 0 32px var(--high)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="kicker"><span class="tag hot">TapeOut Idea Scouts</span><span class="tag">X Layer · chain 196</span><span class="tag">Concept prototype</span></div>
+      <h1><span class="logo" aria-hidden="true"></span><span>Gate <em>School</em></span></h1>
+      <p>Learn chip design one NAND gate at a time. Practise free in the sandbox, pass the final Proof of Design problem, then tape out on X Layer as a miner.</p>
+    </div>
+    <div class="stats" aria-label="Your progress">
+      <div class="stat"><b id="sPassed">0/7</b><span>Lessons</span></div>
+      <div class="stat gold"><b id="sStars">0</b><span>Stars of 21</span></div>
+      <div class="stat"><b id="sRank">Intern</b><span>Rank</span></div>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Lessons"></nav>
+
+  <main>
+    <section class="lesson" aria-live="polite">
+      <div class="sheet-top"><span>Datasheet <b id="lPart"></b></span><span id="lTag"></span></div>
+      <div class="sheet">
+        <h2 id="lName"></h2>
+        <p class="goal" id="lGoal"></p>
+        <div class="specs">
+          <div><span>Par</span><b id="lPar"></b></div>
+          <div><span>Inputs</span><b id="lIns"></b></div>
+          <div><span>Outputs</span><b id="lOuts"></b></div>
+        </div>
+        <div class="rulebox">
+          <span class="lbl">The only rule you need</span>
+          <p>A NAND gate outputs 0 only when both inputs are 1.</p>
+          <table class="rule"><thead><tr><th>In 1</th><th>In 2</th><th>Out</th></tr></thead>
+            <tbody><tr><td>0</td><td>0</td><td>1</td></tr><tr><td>0</td><td>1</td><td>1</td></tr><tr><td>1</td><td>0</td><td>1</td></tr><tr class="zero"><td>1</td><td>1</td><td>0</td></tr></tbody></table>
+        </div>
+        <details class="hint"><summary>Need a hint?</summary><p id="lHint" style="margin-top:8px"></p></details>
+        <ul class="how">
+          <li>Tap a pin, then another pin, to lay a wire.</li>
+          <li>Tap a wire to cut it. Drag a gate to move it.</li>
+          <li>Tap an input lamp to flip it between 0 and 1.</li>
+        </ul>
+        <div class="stars-key">
+          <div><span class="leds"><i class="led on"></i><i class="led"></i><i class="led"></i></span>Passes every vector</div>
+          <div><span class="leds"><i class="led on"></i><i class="led on"></i><i class="led"></i></span>Within par + 2 gates</div>
+          <div><span class="leds"><i class="led on"></i><i class="led on"></i><i class="led on"></i></span>At or under par</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bench">
+      <div class="toolbar">
+        <button class="btn primary" id="addGate">+ NAND gate</button>
+        <button class="btn" id="removeGate" disabled>Remove gate</button>
+        <button class="btn ghost" id="clearBoard">Clear</button>
+        <button class="btn ghost" id="solve">Show me</button>
+        <button class="btn ghost" id="tourBtn">Guided tour</button>
+        <span class="meter">Gates <b id="gCount">0</b>/<b id="gPar">0</b> par <span class="bar"><i id="gBar"></i></span></span>
+      </div>
+
+      <div class="coach" id="coach" hidden aria-live="polite"></div>
+
+      <div class="package">
+        <div class="die" id="die">
+          <svg id="board" viewBox="0 0 800 460" role="img" aria-label="Circuit board"></svg>
+          <span class="silk tl" id="silkL"></span>
+          <span class="silk tr">Sandbox · free</span>
+          <div class="empty" id="empty"><div><b>Empty die</b>Add a NAND gate to start wiring.</div></div>
+          <div class="stamp" id="stamp">PASSED</div>
+          <div class="status" id="status"></div>
+        </div>
+      </div>
+
+      <div class="vectors" id="vectorsBox">
+        <div class="vhead">
+          <h3>Test vectors</h3>
+          <div class="vprog"><span class="bar"><i id="vBar"></i></span><span id="vSum"></span></div>
+          <button class="btn primary" id="runChecks">Run checks</button>
+        </div>
+        <div class="tbl"><table id="vt"></table></div>
+        <div class="toast" id="toast" role="status"></div>
+        <div class="grad" id="grad" hidden>
+          <p><strong>Final problem passed.</strong>This circuit is ready to tape out and enter PoD sampling.</p>
+          <button class="btn primary" id="tapeBtn">Tape out on X Layer</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mhead">
+      <div class="wafer" id="wafer" aria-hidden="true"></div>
+      <div><h3 id="mTitle">Taping out your first circuit</h3><div class="sum" id="mSum"></div></div>
+    </div>
+    <ol class="steps" id="mSteps"></ol>
+    <div id="mDone" hidden>
+      <div class="live">Circuit live. You're a miner now.</div>
+      <p class="sum" id="mId"></p>
+    </div>
+    <p class="fine">Simulation for this prototype. No wallet connects and nothing is sent onchain.</p>
+    <button class="btn" id="mClose">Back to the bench</button>
+  </div>
+</div>
+
+<script>
+const LEVELS = [
+  {key:'not', part:'GS-01', tag:'Lesson 1', name:'Invert a signal', ins:['A'], outs:['Y'], par:1,
+   fn:v=>({Y:1-v.A}),
+   goal:'Build NOT. Y should always be the opposite of A.',
+   hint:'Feed the same wire into both inputs of one NAND.',
+   sol:{g:[['A','A']], o:{Y:0}}},
+  {key:'and', part:'GS-02', tag:'Lesson 2', name:'Both or nothing', ins:['A','B'], outs:['Y'], par:2,
+   fn:v=>({Y:v.A&v.B}),
+   goal:'Build AND. Y is 1 only when A and B are both 1.',
+   hint:'NAND is AND with a NOT on the end. Undo the NOT with a second NAND.',
+   sol:{g:[['A','B'],[0,0]], o:{Y:1}}},
+  {key:'or', part:'GS-03', tag:'Lesson 3', name:'Either one', ins:['A','B'], outs:['Y'], par:3,
+   fn:v=>({Y:v.A|v.B}),
+   goal:'Build OR. Y is 1 when A or B (or both) is 1.',
+   hint:'Invert A, invert B, then NAND the two results together.',
+   sol:{g:[['A','A'],['B','B'],[0,1]], o:{Y:2}}},
+  {key:'nor', part:'GS-04', tag:'Lesson 4', name:'Neither one', ins:['A','B'], outs:['Y'], par:4,
+   fn:v=>({Y:1-(v.A|v.B)}),
+   goal:'Build NOR. Y is 1 only when A and B are both 0.',
+   hint:'You already know OR. Add one more gate.',
+   sol:{g:[['A','A'],['B','B'],[0,1],[2,2]], o:{Y:3}}},
+  {key:'xor', part:'GS-05', tag:'Lesson 5', name:'Spot the difference', ins:['A','B'], outs:['Y'], par:4,
+   fn:v=>({Y:v.A^v.B}),
+   goal:'Build XOR. Y is 1 when A and B are different.',
+   hint:'Start with NAND(A, B). Mix that result back into A and into B, then NAND those two.',
+   sol:{g:[['A','B'],['A',0],['B',0],[1,2]], o:{Y:3}}},
+  {key:'half', part:'GS-06', tag:'Lesson 6', name:'Half adder', ins:['A','B'], outs:['S','C'], par:5,
+   fn:v=>({S:v.A^v.B, C:v.A&v.B}),
+   goal:'Add two bits. S is the sum bit, C is the carry.',
+   hint:'S is your XOR. The first gate of the XOR already holds NOT(A AND B). Invert it once more for C.',
+   sol:{g:[['A','B'],['A',0],['B',0],[1,2],[0,0]], o:{S:3,C:4}}},
+  {key:'pod', part:'POD-01', tag:'Final', name:'Full adder', ins:['A','B','Cin'], outs:['S','Cout'], par:9, final:true,
+   fn:v=>{const t=v.A+v.B+v.Cin; return {S:t&1, Cout:t>>1};},
+   goal:'Add three bits, the way every processor does. Pass all 8 vectors to graduate and tape out.',
+   hint:'Chain two XORs for S. Cout can reuse the first gate of each XOR, so 9 gates is enough.',
+   sol:{g:[['A','B'],['A',0],['B',0],[1,2],[3,'Cin'],[3,4],['Cin',4],[5,6],[0,4]], o:{S:7,Cout:8}}}
+];
+
+const W=800, H=460, GW=70, GH=50;
+const svg=document.getElementById('board');
+const $=id=>document.getElementById(id);
+
+let stars={};
+try{ stars=JSON.parse(localStorage.getItem('gateschool.stars')||'{}')||{}; }catch(e){ stars={}; }
+function saveStars(){ try{ localStorage.setItem('gateschool.stars', JSON.stringify(stars)); }catch(e){} }
+
+let L=0, gates=[], wires={}, liveIn={}, pending=null, selected=null, drag=null, mouse=null, nextId=1;
+const saved={};
+
+function lvl(){ return LEVELS[L]; }
+function ioY(i,n){ return Math.round(H*(i+1)/(n+1)); }
+function gateById(id){ return gates.find(g=>String(g.id)===String(id)); }
+
+function srcPos(k){
+  if(k.startsWith('in:')){ const lv=lvl(); return {x:62, y:ioY(lv.ins.indexOf(k.slice(3)), lv.ins.length)}; }
+  const g=gateById(k.slice(2)); return {x:g.x+GW+14, y:g.y+GH/2};
+}
+function sinkPos(k){
+  if(k.startsWith('out:')){ const lv=lvl(); return {x:W-62, y:ioY(lv.outs.indexOf(k.slice(4)), lv.outs.length)}; }
+  const p=k.split(':'); const g=gateById(p[1]); return {x:g.x-8, y:g.y+(p[2]==='a'?15:35)};
+}
+
+function evaluate(inp){
+  const memo={};
+  function src(k, stack){
+    if(k==null) return null;
+    if(k.startsWith('in:')) return inp[k.slice(3)];
+    const id=k.slice(2);
+    if(id in memo) return memo[id];
+    if(stack.has(id)) return null;
+    stack.add(id);
+    const a=src(wires['g:'+id+':a'], stack), b=src(wires['g:'+id+':b'], stack);
+    stack.delete(id);
+    const v=(a==null||b==null)?null:((a&&b)?0:1);
+    memo[id]=v; return v;
+  }
+  const gv={}, out={};
+  gates.forEach(g=>{ gv[g.id]=src('g:'+g.id, new Set()); });
+  lvl().outs.forEach(o=>{ out[o]=src(wires['out:'+o], new Set()); });
+  return {gv,out};
+}
+
+function vectors(){
+  const ins=lvl().ins, n=ins.length, rows=[];
+  for(let m=0;m<(1<<n);m++){ const v={}; ins.forEach((name,i)=>{ v[name]=(m>>(n-1-i))&1; }); rows.push(v); }
+  return rows;
+}
+
+function curve(a,b){ const dx=Math.max(40,Math.abs(b.x-a.x)*0.5); return `M${a.x} ${a.y}C${a.x+dx} ${a.y} ${b.x-dx} ${b.y} ${b.x} ${b.y}`; }
+const MONO='IBM Plex Mono, monospace';
+
+/* ---------- guided tour (lesson 1) ---------- */
+let tour=null, flips=0, tourPassed=false, coachShown=-1;
+const RULE_HTML=`<table class="rule"><thead><tr><th>In 1</th><th>In 2</th><th>Out</th></tr></thead><tbody><tr><td>0</td><td>0</td><td>1</td></tr><tr><td>0</td><td>1</td><td>1</td></tr><tr><td>1</td><td>0</td><td>1</td></tr><tr class="zero"><td>1</td><td>1</td><td>0</td></tr></tbody></table>`;
+function g0(){ return gates[0]; }
+function fromA(){ return Object.keys(wires).filter(k=>k.startsWith('g:') && wires[k]==='in:A').length; }
+function freeInput(){ const g=g0(); if(!g) return null; return wires[`g:${g.id}:a`]==='in:A'?`g:${g.id}:b`:`g:${g.id}:a`; }
+const TOUR=[
+  {title:'Meet the only part you get',
+   body:'Every wire carries a <b>1</b> (on, glowing) or a <b>0</b> (off, dim). Your one building block is the <b>NAND gate</b>. It has two inputs and one output, and one rule: the output is 0 only when both inputs are 1. Every other time it is 1.',
+   rule:true, next:'Got it'},
+  {title:'Know what you are building',
+   body:'The <b>test vectors</b> table below the board is your target. Each row says: when A is this, Y must be that. In this lesson Y must always be the opposite of A. A ✓ on every row means you pass.',
+   target:'vectorsBox', next:'Next'},
+  {title:'Place a gate', body:'Tap <b>+ NAND gate</b>. A gate appears on the board.',
+   target:'addGate', done:()=>gates.length>0},
+  {title:'Start a wire', body:'Tap the glowing copper square next to the <b>A</b> lamp on the left. It turns bright, meaning a wire is ready to lay.',
+   svg:()=>srcPos('in:A'), done:()=>(pending&&pending.key==='in:A')||fromA()>0},
+  {title:'Connect it to the gate', body:'Now tap one of the two copper squares on the <b>left side of the gate</b>. The wire snaps into place.',
+   svg:()=>freeInput()?sinkPos(freeInput()):null, done:()=>fromA()>0},
+  {title:'Feed A into both inputs', body:'Do it once more: tap <b>A</b>, then the gate\'s other input. With the same signal on both inputs, NAND flips it: 1 in gives 0 out, 0 in gives 1 out.',
+   svg:()=>pending&&pending.key==='in:A'&&freeInput()?sinkPos(freeInput()):srcPos('in:A'), done:()=>fromA()>1},
+  {title:'Send the answer to Y', body:'Tap the copper square on the <b>right of the gate</b>, then the square next to <b>Y</b> on the far right.',
+   svg:()=>{ const g=g0(); if(!g) return null; return pending&&pending.key===`g:${g.id}`?sinkPos('out:Y'):srcPos(`g:${g.id}`); }, done:()=>!!wires['out:Y']},
+  {title:'Watch it think', body:'Tap the <b>A</b> lamp a couple of times. When A is 0, Y glows 1. When A is 1, Y goes dark. You just built an inverter.',
+   svg:()=>({x:34,y:ioY(0,1)+4,big:true}), done:()=>flips>=2},
+  {title:'Run the checks', body:'Tap <b>Run checks</b>. It tests every row of the table for you.',
+   target:'runChecks', done:()=>tourPassed},
+  {title:'That is chip design', body:'On TapeOut you wire NAND gates until every vector passes, then tape the circuit out onchain. Each lesson here stacks on the last, up to the full adder real processors use. Pass that one and you tape out as a miner.',
+   next:'Start Lesson 2', finish:true}
+];
+function tourCheck(){
+  if(tour==null) return;
+  while(tour<TOUR.length && TOUR[tour].done && TOUR[tour].done()) tour++;
+  if(tour>=TOUR.length) tour=TOUR.length-1;
+}
+function renderCoach(){
+  const c=$('coach');
+  document.querySelectorAll('.coach-target').forEach(el=>el.classList.remove('coach-target'));
+  if(tour==null){ c.hidden=true; coachShown=-1; return; }
+  const st=TOUR[tour];
+  if(st.target) $(st.target).classList.add('coach-target');
+  if(coachShown===tour) return;
+  coachShown=tour; c.hidden=false;
+  c.innerHTML=`<div class="coach-head"><span>Guided lesson · step ${tour+1} of ${TOUR.length}</span><button id="tourSkip">Skip tour</button></div>
+    <div class="cdots">${TOUR.map((_,i)=>`<i class="${i<=tour?'on':''}"></i>`).join('')}</div>
+    <h4>${st.title}</h4>
+    <div class="coach-row"><p>${st.body}</p>${st.rule?RULE_HTML:''}</div>
+    ${st.next?`<div><button class="btn primary" id="tourNext">${st.next}</button></div>`:`<div class="coach-wait">Your move on the board</div>`}`;
+}
+function coachRing(){
+  if(tour==null || !TOUR[tour].svg) return '';
+  const p=TOUR[tour].svg(); if(!p) return '';
+  const r0=p.big?24:12, r1=p.big?34:22;
+  return `<g pointer-events="none"><circle cx="${p.x}" cy="${p.y}" r="${r0}" fill="none" stroke="var(--high)" stroke-width="2.5">
+    <animate attributeName="r" values="${r0};${r1};${r0}" dur="1.3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;.25;1" dur="1.3s" repeatCount="indefinite"/></circle></g>`;
+}
+function startTour(){
+  if(L!==0) loadLevel(0);
+  gates=[]; wires={}; pending=null; selected=null; liveIn={A:0};
+  flips=0; tourPassed=false; tour=0; coachShown=-1;
+  $('stamp').className='stamp'; $('die').classList.remove('win'); $('toast').textContent='';
+  render();
+  $('coach').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function endTour(){ tour=null; try{ localStorage.setItem('gateschool.tour','seen'); }catch(e){} render(); }
+$('coach').addEventListener('click',e=>{
+  if(e.target.id==='tourSkip'){ endTour(); return; }
+  if(e.target.id==='tourNext'){
+    if(TOUR[tour].finish){ endTour(); if(stars.not>0) loadLevel(1); }
+    else { tour++; render(); }
+  }
+});
+
+function render(){
+  tourCheck();
+  const lv=lvl(), live=evaluate(liveIn);
+  let s=`<defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="#25304f"/></pattern>
+    <pattern id="grid2" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M100 0H0V100" fill="none" stroke="#1a2442" stroke-width="1"/></pattern>
+    <linearGradient id="gbody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3558"/><stop offset="1" stop-color="#1a2240"/></linearGradient>
+    <linearGradient id="gbodyHi" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3a1c"/><stop offset="1" stop-color="#2a2414"/></linearGradient>
+    <radialGradient id="lamp"><stop offset="0" stop-color="#ffd27a"/><stop offset=".6" stop-color="#f7b940"/><stop offset="1" stop-color="#b9781f"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#grid)"/><rect width="${W}" height="${H}" fill="url(#grid2)"/>
+  <rect x="96" y="14" width="${W-192}" height="${H-28}" rx="10" fill="none" stroke="#1f2a4a" stroke-dasharray="2 6"/>
+  ${fid(110,28)}${fid(W-110,28)}${fid(110,H-28)}${fid(W-110,H-28)}`;
+
+  // wires
+  for(const sink in wires){
+    const src=wires[sink];
+    const v=src.startsWith('in:')?liveIn[src.slice(3)]:live.gv[src.slice(2)];
+    const d=curve(srcPos(src), sinkPos(sink));
+    s+=`<g data-wire="${sink}" style="cursor:pointer"><path d="${d}" stroke="transparent" stroke-width="16" fill="none"/>`;
+    if(v===1){
+      s+=`<path d="${d}" stroke="var(--high)" stroke-width="3.5" fill="none" stroke-linecap="round" filter="url(#glow)" opacity=".9"/>
+          <path d="${d}" class="flow" stroke="#fff6dc" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
+    } else if(v===0){
+      s+=`<path d="${d}" stroke="#4a5880" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>`;
+    } else {
+      s+=`<path d="${d}" stroke="#36426a" stroke-width="2" stroke-dasharray="5 6" fill="none" stroke-linecap="round"/></g>`;
+    }
+  }
+  if(pending && mouse){
+    const p=pending.kind==='src'?srcPos(pending.key):sinkPos(pending.key);
+    const d=pending.kind==='src'?curve(p,mouse):curve(mouse,p);
+    s+=`<path d="${d}" class="flow" stroke="var(--high)" stroke-width="2.5" fill="none" pointer-events="none"/>`;
+  }
+
+  // inputs: lamps with a bond pad
+  lv.ins.forEach((name,i)=>{
+    const y=ioY(i,lv.ins.length), v=liveIn[name];
+    s+=`<g data-in="${name}" style="cursor:pointer">
+      <rect x="10" y="${y-30}" width="48" height="60" rx="10" fill="#141c34" stroke="${v?'var(--high)':'#2c3a62'}" stroke-width="1.5"/>
+      ${v?`<circle cx="34" cy="${y+4}" r="17" fill="var(--high)" opacity=".25" filter="url(#glow)"/>`:''}
+      <circle cx="34" cy="${y+4}" r="13" fill="${v?'url(#lamp)':'#202a48'}" stroke="${v?'#ffd27a':'#3a4870'}" stroke-width="1.5"/>
+      <text x="34" y="${y+9}" text-anchor="middle" font-family="${MONO}" font-size="13" font-weight="600" fill="${v?'#2a1a02':'#8f99b5'}">${v}</text>
+      <text x="34" y="${y-16}" text-anchor="middle" font-family="${MONO}" font-size="10.5" font-weight="600" letter-spacing="1" fill="${v?'var(--high)':'#8f99b5'}">${name}</text></g>`;
+    s+=pin('src','in:'+name,62,y);
+  });
+  // outputs
+  lv.outs.forEach((name,i)=>{
+    const y=ioY(i,lv.outs.length), v=live.out[name];
+    s+=`<g><rect x="${W-58}" y="${y-30}" width="48" height="60" rx="10" fill="#141c34" stroke="${v===1?'var(--high)':'#2c3a62'}" stroke-width="1.5"/>
+      ${v===1?`<rect x="${W-49}" y="${y-9}" width="30" height="26" rx="6" fill="var(--high)" opacity=".3" filter="url(#glow)"/>`:''}
+      <rect x="${W-49}" y="${y-9}" width="30" height="26" rx="6" fill="${v===1?'url(#lamp)':'#202a48'}" stroke="${v===1?'#ffd27a':'#3a4870'}" stroke-width="1.5"/>
+      <text x="${W-34}" y="${y+9}" text-anchor="middle" font-family="${MONO}" font-size="13" font-weight="600" fill="${v===1?'#2a1a02':'#8f99b5'}">${v==null?'?':v}</text>
+      <text x="${W-34}" y="${y-16}" text-anchor="middle" font-family="${MONO}" font-size="10.5" font-weight="600" letter-spacing="1" fill="${v===1?'var(--high)':'#8f99b5'}">${name}</text></g>`;
+    s+=pin('sink','out:'+name,W-62,y);
+  });
+
+  // gates
+  gates.forEach((g,idx)=>{
+    const v=live.gv[g.id], sel=selected===g.id, x=g.x, y=g.y;
+    const stroke=sel?'var(--high)':(v===1?'#b98a3a':'#56659a');
+    s+=`<g data-gate="${g.id}" style="cursor:grab">
+      ${sel?`<rect x="${x-14}" y="${y-10}" width="${GW+34}" height="${GH+20}" rx="12" fill="none" stroke="var(--high)" stroke-dasharray="3 4" opacity=".7"/>`:''}
+      <line x1="${x-8}" y1="${y+15}" x2="${x}" y2="${y+15}" stroke="#56659a" stroke-width="2"/>
+      <line x1="${x-8}" y1="${y+35}" x2="${x}" y2="${y+35}" stroke="#56659a" stroke-width="2"/>
+      <path d="M${x} ${y}H${x+35}A25 25 0 0 1 ${x+35} ${y+50}H${x}Z" fill="${v===1?'url(#gbodyHi)':'url(#gbody)'}" stroke="${stroke}" stroke-width="${sel?2.5:1.75}"/>
+      <path d="M${x+3} ${y+3}H${x+34}" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+      <circle cx="${x+65}" cy="${y+25}" r="5" fill="#0c1224" stroke="${stroke}" stroke-width="1.75"/>
+      <line x1="${x+70}" y1="${y+25}" x2="${x+84}" y2="${y+25}" stroke="${v===1?'var(--high)':'#56659a'}" stroke-width="2"/>
+      <text x="${x+27}" y="${y+22}" text-anchor="middle" font-family="${MONO}" font-size="10" font-weight="600" letter-spacing=".5" fill="${v===1?'var(--high)':'#aab3cc'}" pointer-events="none">NAND</text>
+      <text x="${x+27}" y="${y+36}" text-anchor="middle" font-family="${MONO}" font-size="9" fill="#66749c" pointer-events="none">G${idx+1}</text></g>`;
+    s+=pin('sink',`g:${g.id}:a`,x-8,y+15)+pin('sink',`g:${g.id}:b`,x-8,y+35)+pin('src',`g:${g.id}`,x+84,y+25);
+  });
+
+  s+=coachRing();
+  svg.innerHTML=s;
+  $('empty').hidden=gates.length>0;
+  renderSide(live);
+  renderCoach();
+}
+
+function fid(x,y){ return `<g opacity=".55"><circle cx="${x}" cy="${y}" r="5" fill="none" stroke="#3a4870"/><path d="M${x-9} ${y}H${x+9}M${x} ${y-9}V${y+9}" stroke="#3a4870"/></g>`; }
+
+function pin(kind,key,x,y){
+  const on=pending && pending.key===key;
+  return `<g data-pin="${kind}|${key}" style="cursor:crosshair"><circle cx="${x}" cy="${y}" r="12" fill="transparent"/>
+    ${on?`<circle cx="${x}" cy="${y}" r="10" fill="var(--high)" opacity=".3" filter="url(#glow)"/>`:''}
+    <rect x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${on?'var(--high)':'#c7864a'}" stroke="${on?'#ffd27a':'#e2a46a'}" stroke-width="1"/></g>`;
+}
+
+function renderSide(live){
+  const lv=lvl();
+  $('gCount').textContent=gates.length; $('gPar').textContent=lv.par;
+  const gb=$('gBar'); gb.style.width=Math.min(100,gates.length/lv.par*100)+'%'; gb.className=gates.length>lv.par?'over':'';
+  $('removeGate').disabled=selected==null;
+  $('status').textContent=pending?(pending.kind==='src'?'Now tap a gate input or an output pad':'Now tap an input or a gate output'):'';
+  const rows=vectors(); let pass=0;
+  const bit=x=>`<span class="bit ${x==null?'bx':'b'+x}">${x==null?'·':x}</span>`;
+  let h='<thead><tr>'+lv.ins.map(n=>`<th>${n}</th>`).join('')+lv.outs.map((o,i)=>`<th class="${i===0?'sep':''}">${o} want</th><th>${o} got</th>`).join('')+'<th class="res sep">Check</th></tr></thead><tbody>';
+  rows.forEach((v,ri)=>{
+    const exp=lv.fn(v), got=evaluate(v).out;
+    const ok=lv.outs.every(o=>got[o]===exp[o]); if(ok) pass++;
+    h+=`<tr class="${ok?'pass':'fail'}">`+lv.ins.map(n=>`<td>${bit(v[n])}</td>`).join('')+
+      lv.outs.map((o,i)=>`<td class="${i===0?'sep':''}">${bit(exp[o])}</td><td class="got">${bit(got[o])}</td>`).join('')+
+      `<td class="res sep">${ok?'✓':'✗'}</td></tr>`;
+  });
+  $('vt').innerHTML=h+'</tbody>';
+  $('vSum').textContent=`${pass} / ${rows.length} passing`;
+  $('vBar').style.width=(pass/rows.length*100)+'%';
+}
+
+function renderLesson(){
+  const lv=lvl();
+  $('lPart').textContent=lv.part; $('lTag').textContent=lv.tag;
+  $('lName').textContent=lv.name; $('lGoal').textContent=lv.goal;
+  $('lPar').textContent=lv.par+' NAND'; $('lIns').textContent=lv.ins.join(' ');
+  $('lOuts').textContent=lv.outs.join(' '); $('lHint').textContent=lv.hint;
+  $('silkL').textContent=`${lv.part} · ${lv.name}`;
+  document.querySelector('.hint').open=false;
+  $('grad').hidden=!(lv.final && stars[lv.key]>0);
+  $('toast').textContent=''; $('toast').className='toast';
+  $('stamp').className='stamp'; $('die').classList.remove('win');
+  renderRail();
+}
+
+function renderRail(){
+  $('rail').innerHTML=LEVELS.map((lv,i)=>{
+    const st=stars[lv.key]||0, locked=i>0 && !(stars[LEVELS[i-1].key]>0);
+    const leds=[0,1,2].map(k=>`<i class="led ${k<st?'on':''}"></i>`).join('');
+    return `<button class="lv ${lv.final?'final':''} ${st?'done':''}" data-l="${i}" ${i===L?'aria-current="true"':''} ${locked?'disabled':''}>
+      <span class="n"><span>${lv.tag}</span></span><span class="t">${lv.name}</span><span class="leds" aria-label="${st} of 3 stars">${leds}</span></button>`;
+  }).join('');
+  const passed=LEVELS.filter(l=>stars[l.key]>0).length, total=LEVELS.reduce((a,l)=>a+(stars[l.key]||0),0);
+  $('sPassed').textContent=`${passed}/${LEVELS.length}`; $('sStars').textContent=total;
+  $('sRank').textContent=stars.pod?'Miner':passed>=4?'Designer':passed>=1?'Apprentice':'Intern';
+}
+
+function loadLevel(i){
+  saved[L]={gates:gates.map(g=>({...g})), wires:{...wires}};
+  L=i; pending=null; selected=null;
+  const sv=saved[i];
+  gates=sv?sv.gates.map(g=>({...g})):[]; wires=sv?{...sv.wires}:{};
+  liveIn={}; lvl().ins.forEach(n=>liveIn[n]=0);
+  renderLesson(); render();
+}
+
+function freeSpot(){
+  const cols=[190,310,430,550], rows=[60,150,240,330];
+  for(const y of rows) for(const x of cols){ if(!gates.some(g=>Math.abs(g.x-x)<90 && Math.abs(g.y-y)<70)) return {x,y}; }
+  return {x:330+Math.random()*80|0, y:180+Math.random()*80|0};
+}
+
+function addGate(){ const p=freeSpot(); const g={id:nextId++, x:p.x, y:p.y}; gates.push(g); selected=g.id; render(); }
+function removeGate(id){
+  gates=gates.filter(g=>g.id!==id);
+  for(const k in wires){ if(k.startsWith(`g:${id}:`) || wires[k]===`g:${id}`) delete wires[k]; }
+  selected=null; pending=null; render();
+}
+function connect(src,sink){ wires[sink]=src; pending=null; render(); }
+function onPin(kind,key){
+  if(!pending){ pending={kind,key}; render(); return; }
+  if(pending.key===key){ pending=null; render(); return; }
+  if(pending.kind===kind){ pending={kind,key}; render(); return; }
+  connect(kind==='src'?key:pending.key, kind==='sink'?key:pending.key);
+}
+function svgPoint(e){ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const m=svg.getScreenCTM(); return m?pt.matrixTransform(m.inverse()):{x:0,y:0}; }
+
+svg.addEventListener('pointerdown',e=>{
+  const pinEl=e.target.closest('[data-pin]');
+  if(pinEl){ const [kind,key]=pinEl.dataset.pin.split('|'); onPin(kind,key); e.preventDefault(); return; }
+  const inEl=e.target.closest('[data-in]');
+  if(inEl){ const n=inEl.dataset.in; liveIn[n]=1-liveIn[n]; flips++; render(); return; }
+  const wEl=e.target.closest('[data-wire]');
+  if(wEl){ delete wires[wEl.dataset.wire]; render(); return; }
+  const gEl=e.target.closest('[data-gate]');
+  if(gEl){
+    const g=gateById(gEl.dataset.gate), p=svgPoint(e);
+    selected=g.id; drag={g, dx:p.x-g.x, dy:p.y-g.y};
+    try{ svg.setPointerCapture(e.pointerId); }catch(err){}
+    render(); e.preventDefault(); return;
+  }
+  selected=null; pending=null; render();
+});
+svg.addEventListener('pointermove',e=>{
+  const p=svgPoint(e);
+  if(drag){
+    drag.g.x=Math.max(80, Math.min(W-GW-90, p.x-drag.dx));
+    drag.g.y=Math.max(10, Math.min(H-GH-10, p.y-drag.dy));
+    render(); return;
+  }
+  if(pending){ mouse={x:p.x,y:p.y}; render(); }
+});
+svg.addEventListener('pointerup',()=>{ drag=null; });
+svg.addEventListener('pointercancel',()=>{ drag=null; });
+svg.addEventListener('pointerleave',()=>{ if(pending){ mouse=null; render(); } });
+
+document.addEventListener('keydown',e=>{
+  if((e.key==='Delete'||e.key==='Backspace') && selected!=null && !/input|textarea/i.test(e.target.tagName)){ removeGate(selected); e.preventDefault(); }
+  if(e.key==='Escape'){ pending=null; selected=null; render(); }
+});
+
+$('addGate').onclick=addGate;
+$('removeGate').onclick=()=>{ if(selected!=null) removeGate(selected); };
+$('clearBoard').onclick=()=>{ gates=[]; wires={}; selected=null; pending=null; render(); };
+$('rail').addEventListener('click',e=>{ const b=e.target.closest('[data-l]'); if(b && !b.disabled) loadLevel(+b.dataset.l); });
+
+$('solve').onclick=()=>{
+  const sol=lvl().sol; gates=[]; wires={}; pending=null; selected=null;
+  const ids=sol.g.map(()=>nextId++), depth=sol.g.map(()=>0);
+  sol.g.forEach((pair,i)=>{ depth[i]=Math.max(...pair.map(s=>typeof s==='number'?depth[s]+1:0)); });
+  const cols={}; depth.forEach((d,i)=>{ (cols[d]=cols[d]||[]).push(i); });
+  const maxD=Math.max(...depth), step=maxD?Math.min(110,(W-360)/maxD):0;
+  sol.g.forEach((pair,i)=>{
+    const col=cols[depth[i]], k=col.indexOf(i);
+    gates.push({id:ids[i], x:Math.round(150+depth[i]*step), y:Math.round(H*(k+1)/(col.length+1))-GH/2});
+  });
+  const ref=s=>typeof s==='number'?'g:'+ids[s]:'in:'+s;
+  sol.g.forEach((pair,i)=>{ wires[`g:${ids[i]}:a`]=ref(pair[0]); wires[`g:${ids[i]}:b`]=ref(pair[1]); });
+  for(const o in sol.o) wires['out:'+o]='g:'+ids[sol.o[o]];
+  render();
+};
+
+$('runChecks').onclick=()=>{
+  const lv=lvl(), rows=vectors();
+  const pass=rows.every(v=>{ const exp=lv.fn(v), got=evaluate(v).out; return lv.outs.every(o=>got[o]===exp[o]); });
+  document.querySelectorAll('#vt tbody tr').forEach((tr,i)=>{ setTimeout(()=>{ tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash'); }, i*90); });
+  const t=$('toast'), stamp=$('stamp'), die=$('die');
+  stamp.className='stamp'; die.classList.remove('win');
+  setTimeout(()=>{
+    if(!pass){ t.className='toast bad'; t.textContent='Not yet. Follow the signal through the rows marked ✗.'; return; }
+    const n=gates.length, st=n<=lv.par?3:n<=lv.par+2?2:1;
+    stars[lv.key]=Math.max(stars[lv.key]||0, st); saveStars();
+    void stamp.offsetWidth; stamp.className='stamp show'; die.classList.add('win');
+    t.className='toast ok';
+    t.textContent= st===3?`Passed at par with ${n} gates. Three stars.`:`Passed with ${n} gates. Build it in ${lv.par} for three stars.`;
+    if(lv.final) $('grad').hidden=false; else t.textContent+=' Next lesson unlocked.';
+    if(tour!=null && L===0) tourPassed=true;
+    renderRail(); render();
+  }, rows.length*90+150);
+};
+
+$('tapeBtn').onclick=()=>{
+  const lv=lvl(), n=gates.length, nv=vectors().length;
+  $('mSum').textContent=`${lv.name} · ${n} NAND · ${nv}/${nv} vectors · X Layer 196`;
+  const steps=[
+    ['Connect wallet','OKX Wallet or MetaMask, switched to X Layer'],
+    [`Burn ${n} NAND`,'Transistors become the permanent circuit'],
+    ['Tape out the circuit','Circuit NFT minted on X Layer'],
+    ['Claim PoD problem #1','Contract samples your test vectors']
+  ];
+  $('mSteps').innerHTML=steps.map(s=>`<li><span class="dot"></span><span>${s[0]}<small>${s[1]}</small></span></li>`).join('');
+  $('mDone').hidden=true; $('overlay').hidden=false; $('wafer').classList.add('spin');
+  const lis=[...document.querySelectorAll('#mSteps li')];
+  lis.forEach((li,i)=>{ setTimeout(()=>{ li.className='run'; }, i*1100); setTimeout(()=>{ li.className='done'; }, i*1100+950); });
+  setTimeout(()=>{
+    $('mDone').hidden=false; $('wafer').classList.remove('spin');
+    const id=Array.from({length:8},()=>'0123456789abcdef'[Math.random()*16|0]).join('');
+    $('mId').textContent=`Simulated circuit id sim-${id} · eligible for $BEM PoD sampling`;
+  }, lis.length*1100+200);
+  $('mClose').focus();
+};
+$('mClose').onclick=()=>{ $('overlay').hidden=true; };
+$('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') $('overlay').hidden=true; });
+
+$('tourBtn').onclick=startTour;
+
+liveIn={A:0};
+renderLesson(); render();
+let seenTour=false;
+try{ seenTour=localStorage.getItem('gateschool.tour')==='seen'; }catch(e){}
+if(!seenTour && !(stars.not>0)) startTour();
+</script>
+</body>
+</html>
