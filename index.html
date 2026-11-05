@@ -49,7 +49,7 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
   background-image:linear-gradient(rgba(120,140,200,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,200,.045) 1px,transparent 1px);
   background-size:40px 40px;mask-image:linear-gradient(#000,transparent 70%);-webkit-mask-image:linear-gradient(#000,transparent 70%)}
 .wrap{max-width:1260px;margin:0 auto;display:grid;gap:22px}
-button{font:inherit;color:inherit;cursor:pointer}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 button:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:2px solid var(--high);outline-offset:2px}
 .mono{font-family:var(--f-mono)}
 
@@ -78,7 +78,7 @@ header.top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px 28px;a
 .stat.gold b{color:var(--high)}
 
 /* ---------- lesson rail as a trace ---------- */
-.rail{display:flex;gap:0;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}
+.rail{position:relative;display:flex;gap:0;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}
 .lv{flex:none;position:relative;display:grid;gap:3px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px 10px 14px;min-width:142px;margin-left:26px;transition:border-color .2s, transform .2s}
 .lv:first-child{margin-left:0}
 .lv:not(:first-child)::before{content:"";position:absolute;right:100%;top:50%;width:27px;height:2px;background:var(--line)}
@@ -145,7 +145,7 @@ main{display:grid;grid-template-columns:310px minmax(0,1fr);gap:20px;align-items
 .package::before{top:4px}.package::after{bottom:4px}
 .die{position:relative;border-radius:12px;overflow-x:auto;background:#0c1224;border:1px solid #2c3a62;transition:box-shadow .3s,border-color .3s}
 .die.win{border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-soft),0 0 40px -6px var(--ok)}
-#board{display:block;width:100%;min-width:640px;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+#board{display:block;width:100%;min-width:0;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
 .silk{position:absolute;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#56658e;pointer-events:none}
 .silk.tl{left:14px;top:10px}.silk.tr{right:14px;top:10px}
 .status{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;font-family:var(--f-mono);font-size:12px;color:var(--high);background:rgba(11,16,32,.85);border:1px solid var(--high);border-radius:99px;padding:4px 12px;pointer-events:none;white-space:nowrap}
@@ -235,6 +235,53 @@ tr.flash{animation:flash .55s ease}
 .coach-wait::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--high);animation:breathe 1.2s infinite}
 .coach-target{box-shadow:0 0 0 3px var(--high),0 0 22px var(--high);animation:ring 1.3s ease-in-out infinite}
 @keyframes ring{50%{box-shadow:0 0 0 6px rgba(247,185,64,.35),0 0 32px var(--high)}}
+.mgoal{display:none}
+@media (max-width:640px){
+  body{padding-block:14px 32px}
+  .wrap{gap:14px}
+  .kicker{margin-bottom:10px;gap:6px;font-size:10.5px}
+  .kicker .tag{padding:2px 8px}
+  .brand h1{font-size:42px;gap:12px}
+  .brand p{font-size:14px;margin-top:10px}
+  .stats{width:100%;grid-template-columns:repeat(3,1fr)}
+  .stat{padding:9px 12px}
+  .stat b{font-size:20px}
+  .stat span{font-size:9.5px}
+  .rail{padding-bottom:4px}
+  .lv{min-width:116px;padding:8px 10px;margin-left:18px}
+  .lv:not(:first-child)::before{width:19px}
+  main{display:flex;flex-direction:column;gap:14px}
+  .bench{order:1;gap:10px}
+  .lesson{order:2}
+  .mgoal{display:grid;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .mgoal span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--high)}
+  .mgoal strong{font-family:var(--f-display);font-size:22px;line-height:1.1}
+  .mgoal p{margin:0;font-size:14px;color:#c9d0e2}
+  .toolbar{gap:6px}
+  .btn{padding:8px 11px;font-size:13.5px}
+  .meter{width:100%;margin-left:0;font-size:12px}
+  .meter .bar{flex:1;width:auto}
+  .package{padding:8px;border-radius:16px}
+  .package::before,.package::after{left:24px;right:24px;height:4px}
+  .package::before{top:2px}.package::after{bottom:2px}
+  .die{border-radius:10px}
+  .silk{font-size:9px}.silk.tl{left:10px;top:8px}.silk.tr{display:none}
+  .stamp{font-size:17px;right:10px;top:26px;padding:1px 10px;border-width:2px}
+  .status{font-size:11px;bottom:8px;white-space:normal;text-align:center;width:max-content;max-width:88%}
+  .vectors{padding:12px;gap:10px}
+  .vhead h3{font-size:17px}
+  th,td{padding:5px 8px}
+  td .bit{width:20px;height:20px}
+  .coach{padding:13px 14px;gap:8px}
+  .coach h4{font-size:19px}
+  .coach p{font-size:14px}
+  .coach-row{gap:10px}
+  .sheet{padding:14px;gap:14px}
+  .lesson h2{font-size:24px}
+  .modal{padding:18px;gap:12px}
+  .modal h3{font-size:21px}
+  .wafer{width:48px;height:48px}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -287,6 +334,7 @@ tr.flash{animation:flash .55s ease}
     </section>
 
     <section class="bench">
+      <div class="mgoal"><span id="mgTag"></span><strong id="mgName"></strong><p id="mgGoal"></p></div>
       <div class="toolbar">
         <button class="btn primary" id="addGate">+ NAND gate</button>
         <button class="btn" id="removeGate" disabled>Remove gate</button>
@@ -381,7 +429,7 @@ const LEVELS = [
    sol:{g:[['A','B'],['A',0],['B',0],[1,2],[3,'Cin'],[3,4],['Cin',4],[5,6],[0,4]], o:{S:7,Cout:8}}}
 ];
 
-const W=800, H=460, GW=70, GH=50;
+let W=800, H=460; const GW=70, GH=50;
 const svg=document.getElementById('board');
 const $=id=>document.getElementById(id);
 
@@ -389,8 +437,20 @@ let stars={};
 try{ stars=JSON.parse(localStorage.getItem('gateschool.stars')||'{}')||{}; }catch(e){ stars={}; }
 function saveStars(){ try{ localStorage.setItem('gateschool.stars', JSON.stringify(stars)); }catch(e){} }
 
+const MQ=window.matchMedia('(max-width: 640px)');
+function compact(){ return W<600; }
+function setLayout(){
+  const nw=MQ.matches?440:800, nh=MQ.matches?640:460;
+  if(nw===W && nh===H) return false;
+  const oX=W-GW-90, oY=H-GH-10, nX=nw-GW-90, nY=nh-GH-10;
+  const map=g=>{ g.x=Math.round(80+(g.x-80)*(nX-80)/(oX-80)); g.y=Math.round(10+(g.y-10)*(nY-10)/(oY-10)); };
+  gates.forEach(map); Object.values(saved).forEach(sv=>sv.gates.forEach(map));
+  W=nw; H=nh; svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  return true;
+}
 let L=0, gates=[], wires={}, liveIn={}, pending=null, selected=null, drag=null, mouse=null, nextId=1;
 const saved={};
+MQ.addEventListener('change',()=>{ if(setLayout()) render(); });
 
 function lvl(){ return LEVELS[L]; }
 function ioY(i,n){ return Math.round(H*(i+1)/(n+1)); }
@@ -594,9 +654,10 @@ function fid(x,y){ return `<g opacity=".55"><circle cx="${x}" cy="${y}" r="5" fi
 
 function pin(kind,key,x,y){
   const on=pending && pending.key===key;
-  return `<g data-pin="${kind}|${key}" style="cursor:crosshair"><circle cx="${x}" cy="${y}" r="12" fill="transparent"/>
-    ${on?`<circle cx="${x}" cy="${y}" r="10" fill="var(--high)" opacity=".3" filter="url(#glow)"/>`:''}
-    <rect x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${on?'var(--high)':'#c7864a'}" stroke="${on?'#ffd27a':'#e2a46a'}" stroke-width="1"/></g>`;
+  const hr=compact()?20:12, ps=compact()?6.5:5;
+  return `<g data-pin="${kind}|${key}" style="cursor:crosshair"><circle cx="${x}" cy="${y}" r="${hr}" fill="transparent"/>
+    ${on?`<circle cx="${x}" cy="${y}" r="${hr-2}" fill="var(--high)" opacity=".3" filter="url(#glow)"/>`:''}
+    <rect x="${x-ps}" y="${y-ps}" width="${ps*2}" height="${ps*2}" rx="2" fill="${on?'var(--high)':'#c7864a'}" stroke="${on?'#ffd27a':'#e2a46a'}" stroke-width="1"/></g>`;
 }
 
 function renderSide(live){
@@ -627,6 +688,7 @@ function renderLesson(){
   $('lPar').textContent=lv.par+' NAND'; $('lIns').textContent=lv.ins.join(' ');
   $('lOuts').textContent=lv.outs.join(' '); $('lHint').textContent=lv.hint;
   $('silkL').textContent=`${lv.part} · ${lv.name}`;
+  $('mgTag').textContent=`${lv.tag} · par ${lv.par} NAND`; $('mgName').textContent=lv.name; $('mgGoal').textContent=lv.goal;
   document.querySelector('.hint').open=false;
   $('grad').hidden=!(lv.final && stars[lv.key]>0);
   $('toast').textContent=''; $('toast').className='toast';
@@ -643,6 +705,7 @@ function renderRail(){
   }).join('');
   const passed=LEVELS.filter(l=>stars[l.key]>0).length, total=LEVELS.reduce((a,l)=>a+(stars[l.key]||0),0);
   $('sPassed').textContent=`${passed}/${LEVELS.length}`; $('sStars').textContent=total;
+  const cur=$('rail').querySelector('[aria-current]'); if(cur) $('rail').scrollLeft=Math.max(0,cur.offsetLeft-16);
   $('sRank').textContent=stars.pod?'Miner':passed>=4?'Designer':passed>=1?'Apprentice':'Intern';
 }
 
@@ -656,7 +719,7 @@ function loadLevel(i){
 }
 
 function freeSpot(){
-  const cols=[190,310,430,550], rows=[60,150,240,330];
+  const cols=compact()?[100,190,280]:[190,310,430,550], rows=compact()?[40,130,220,310,400,490]:[60,150,240,330];
   for(const y of rows) for(const x of cols){ if(!gates.some(g=>Math.abs(g.x-x)<90 && Math.abs(g.y-y)<70)) return {x,y}; }
   return {x:330+Math.random()*80|0, y:180+Math.random()*80|0};
 }
@@ -720,11 +783,19 @@ $('solve').onclick=()=>{
   const ids=sol.g.map(()=>nextId++), depth=sol.g.map(()=>0);
   sol.g.forEach((pair,i)=>{ depth[i]=Math.max(...pair.map(s=>typeof s==='number'?depth[s]+1:0)); });
   const cols={}; depth.forEach((d,i)=>{ (cols[d]=cols[d]||[]).push(i); });
-  const maxD=Math.max(...depth), step=maxD?Math.min(110,(W-360)/maxD):0;
-  sol.g.forEach((pair,i)=>{
-    const col=cols[depth[i]], k=col.indexOf(i);
-    gates.push({id:ids[i], x:Math.round(150+depth[i]*step), y:Math.round(H*(k+1)/(col.length+1))-GH/2});
-  });
+  const maxD=Math.max(...depth);
+  if(compact()){
+    const order=sol.g.map((_,i)=>i).sort((a,b)=>depth[a]-depth[b]||a-b), n=order.length;
+    const span=W-GW-90-80, sp=n>1?Math.min(95,(H-70-GH)/(n-1)):0, y0=(H-GH)/2-sp*(n-1)/2;
+    const pos={}; order.forEach((i,r)=>{ pos[i]={x:Math.round(80+(maxD?depth[i]/maxD:0.5)*span), y:Math.round(y0+r*sp)}; });
+    sol.g.forEach((pair,i)=>gates.push({id:ids[i], x:pos[i].x, y:pos[i].y}));
+  } else {
+    const step=maxD?Math.min(110,(W-360)/maxD):0;
+    sol.g.forEach((pair,i)=>{
+      const col=cols[depth[i]], k=col.indexOf(i);
+      gates.push({id:ids[i], x:Math.round(150+depth[i]*step), y:Math.round(H*(k+1)/(col.length+1))-GH/2});
+    });
+  }
   const ref=s=>typeof s==='number'?'g:'+ids[s]:'in:'+s;
   sol.g.forEach((pair,i)=>{ wires[`g:${ids[i]}:a`]=ref(pair[0]); wires[`g:${ids[i]}:b`]=ref(pair[1]); });
   for(const o in sol.o) wires['out:'+o]='g:'+ids[sol.o[o]];
@@ -775,6 +846,7 @@ $('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') $('overla
 
 $('tourBtn').onclick=startTour;
 
+setLayout();
 liveIn={A:0};
 renderLesson(); render();
 let seenTour=false;
